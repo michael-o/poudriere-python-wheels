@@ -8,8 +8,8 @@
 * `poudriere-devel` installed
 * `python` installed if below is desired
 * `py-wheel` (wheel command) installed if you need [multiplatform tagged wheels](https://packaging.python.org/en/latest/specifications/binary-distribution-format/)
-  for RELEASEs with patches from 1 to p
-* `py-pip2pi` (dir2pi command) installed if you need a static index generated after the build
+  for RELEASES with patches from p-2 to p (three in total)
+* if you want a static index generated after the build
 
 ## Installation/Configuration
 
@@ -27,7 +27,7 @@ Run your poudriere build as usual, as soon as a Python package is built it will:
 Poudriere will process the wheels by
 * collecting them after successful package build from the port's work directory,
 * creating multiplatform-tagged wheels (if `py-wheel` is installed),
-* generates a static simple index (if `py-pip2pi` is installed).
+* generates a static simple index (if `export GENERATE_STATIC_INDEX=yes` is set in your `poudriere.conf`).
 
 Your wheels are ready to be served by a web server.
 

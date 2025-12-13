@@ -15,6 +15,7 @@ esac
 
 : "${PYTHON_WHEELS:=${POUDRIERE_DATA:?}/python-wheels/${MASTERNAME}}"
 : "${RETAG_LAST_PATCHES_COUNT:=3}"
+HOOKS="$(cd "$(dirname "$0")" && pwd)"
 
 # There are three ways multiplatform wheels:
 # 1. Use the wheel package and add multiple platform tags to one wheel.
@@ -93,11 +94,16 @@ if [ "${event}" = "stop" ]; then
       # No retagging required
       ;;
   esac
-  dir2pi_cmd="$(find_executable dir2pi)"
-  if [ -n "${dir2pi_cmd}" ]; then
-    [ ${VERBOSE} -gt 0 ] && echo "Running dir2pi in: ${PYTHON_WHEELS:?}"
-    "${dir2pi_cmd}" "${PYTHON_WHEELS:?}"
-  fi
+
+  case "${GENERATE_STATIC_INDEX}" in
+    yes)
+      [ ${VERBOSE} -gt 0 ] && echo "Generating static index in: ${PYTHON_WHEELS:?}"
+      [ ${VERBOSE} -gt 0 ] && vflag="-v" || vflag=""
+      "${HOOKS}/generate-index.py" $vflag --inspect-metadata "${PYTHON_WHEELS:?}"
+      ;;
+    *)
+      ;;
+  esac
 fi
 
 exit 0
