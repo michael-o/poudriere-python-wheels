@@ -9,14 +9,13 @@
 * `python` installed if below is desired
 * `py-wheel` (wheel command) installed if you need [multiplatform tagged wheels](https://packaging.python.org/en/latest/specifications/binary-distribution-format/)
   for RELEASES with patches from p-2 to p (three in total)
-* if you want a static index generated after the build
 
 ## Installation/Configuration
 
 * Apply [this patch](https://github.com/freebsd/freebsd-ports/compare/main...michael-o:freebsd-ports:build-python-wheels.patch) to your ports tree
 * Add `PYDISTUTILS_BUILD_WHEEL=yes` to your `make.conf`, PEP 517-based wheels are built by default
 * Copy the hooks from `src/` to `${POUDRIERED}/hooks/plugins/python-wheels/`
-* Add `export PROCESS_PYTHON_WHEELS=yes` to your `poudriere.conf`
+* Add `NO_PACKAGE_BUILDING=yes ; export PROCESS_PYTHON_WHEELS=yes` to your `poudriere.conf`
 
 ## Building/Processing Python Wheels
 
