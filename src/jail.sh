@@ -70,7 +70,7 @@ create_multiplatform_wheels() {
   find "${PYTHON_WHEELS:?}" -maxdepth 1 \( -name "*${os}_${base_version}_${arch}*.whl" -or \
       -name "*${os}_${base_version}_p*_${arch}*.whl" \) ! -name "*${platform_tag}.whl" ! -newer "${PYTHON_WHEELS}/.stamp" | while read -r wheel; do
     [ ${VERBOSE} -gt 1 ] && echo "Retagging existing wheel: ${wheel}"
-    "${wheel_cmd:?}" tags --remove --platform-tag="${platform_tags}" "${wheel}" > /dev/null
+    "${wheel_cmd:?}" tags --platform-tag="${platform_tags}" "${wheel}" > /dev/null
   done
 }
 
