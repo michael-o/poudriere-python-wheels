@@ -17,15 +17,6 @@ esac
 : "${RETAG_LAST_PATCHES_COUNT:=3}"
 HOOKS="$(cd "$(dirname "$0")" && pwd)"
 
-# There are three ways multiplatform wheels:
-# 1. Use the wheel package and add multiple platform tags to one wheel.
-# 2. Create softlinks, but this might cause problems because there will be a
-#    mismatch between filename and Tag in WHEEL file.
-# 3. Use the wheel package and rewrite platform tag, but that will create new
-#    file and consume a lot of disk space.
-#
-# We are using the first way.
-
 find_executable() {
   local name="$1"
   local required="${2:-no}"
@@ -65,11 +56,13 @@ create_multiplatform_wheels() {
   [ ${VERBOSE} -gt 1 ] && echo "New multiplatform tags: ${platform_tags}"
   find "${PYTHON_WHEELS:?}" -maxdepth 1 -name "*${platform_tag}.whl" -newer "${PYTHON_WHEELS}/.stamp" | while read -r wheel; do
     [ ${VERBOSE} -gt 1 ] && echo "Retagging new wheel: ${wheel}"
+    # It is safe to remove the original wheel because it has not been seen before, thus not been indexed.
     "${wheel_cmd:?}" tags --remove --platform-tag="${platform_tags}" "${wheel}" > /dev/null
   done
   find "${PYTHON_WHEELS:?}" -maxdepth 1 \( -name "*${os}_${base_version}_${arch}*.whl" -or \
       -name "*${os}_${base_version}_p*_${arch}*.whl" \) ! -name "*${platform_tag}.whl" ! -newer "${PYTHON_WHEELS}/.stamp" | while read -r wheel; do
     [ ${VERBOSE} -gt 1 ] && echo "Retagging existing wheel: ${wheel}"
+    # Existing wheels cannot be removed because they might be referenced in a lock file
     "${wheel_cmd:?}" tags --platform-tag="${platform_tags}" "${wheel}" > /dev/null
   done
 }
