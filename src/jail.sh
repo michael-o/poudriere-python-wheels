@@ -44,15 +44,39 @@ create_multiplatform_wheels() {
   patch="${patch:-0}"
   local wheel_redirect="/dev/null"
   [ "$VERBOSE" -gt 1 ] && wheel_redirect="/dev/stdout"
-  local platform_tags="$(awk -v os="${os}" -v base_version="${base_version}" -v patch="${patch}" -v arch="${arch}" -v last_p="${RETAG_LAST_PATCHES_COUNT}" '
-  BEGIN {
-    start = (patch - last_p + 1 > 0) ? patch - last_p + 1 : 0
-    for (p = start; p <= patch; p++) {
-      platform_tag = (p == 0 ? os "_" base_version "_" arch : os "_" base_version "_p" p "_" arch)
-      printf "%s%s", (p > start ? "." : ""), platform_tag
-    }
-    print ""
-  }')"
+  local platform_tags="$(
+    awk -v os="${os}" -v base_version="${base_version}" -v patch="${patch}" \
+        -v arch="${arch}" -v last_p="${RETAG_LAST_PATCHES_COUNT}" '
+    BEGIN {
+      start = (patch - last_p + 1 > 0) ? patch - last_p + 1 : 0
+      n = 0
+
+      # Build all tags
+      for (p = start; p <= patch; p++) {
+        tag = p == 0 \
+              ? os "_" base_version "_" arch \
+              : os "_" base_version "_p" p "_" arch
+        tags[n++] = tag
+      }
+
+      # Lexicographic sort (same as Python sorted())
+      for (i = 0; i < n; i++) {
+        for (j = i + 1; j < n; j++) {
+          if (tags[i] > tags[j]) {
+            tmp = tags[i]
+            tags[i] = tags[j]
+            tags[j] = tmp
+          }
+        }
+      }
+
+      # Join with dots
+      for (i = 0; i < n; i++) {
+        printf "%s%s", (i > 0 ? "." : ""), tags[i]
+      }
+      print ""
+    }'
+  )"
   [ ${VERBOSE} -gt 0 ] && echo "Creating multiplatform Python wheels in: ${PYTHON_WHEELS:?}"
   [ ${VERBOSE} -gt 1 ] && echo "Current platform tag: ${platform_tag}"
   [ ${VERBOSE} -gt 1 ] && echo "New multiplatform tags: ${platform_tags}"
