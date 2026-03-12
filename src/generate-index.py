@@ -22,7 +22,8 @@ def extract_metadata(wheel_path: Path, verbose: bool) -> dict:
     try:
         with zipfile.ZipFile(wheel_path, "r") as zf:
             for name in zf.namelist():
-                if name.endswith("METADATA") and ".dist-info/" in name:
+                # Only accept top-level dist-info METADATA
+                if name.count("/") == 1 and name.endswith(".dist-info/METADATA"):
                     if verbose:
                         print(f"Inspecting metadata in {wheel_path.name}")
                     with zf.open(name) as meta_file:
@@ -30,6 +31,7 @@ def extract_metadata(wheel_path: Path, verbose: bool) -> dict:
                             line = line.decode("utf-8").strip()
                             if line.startswith("Requires-Python:"):
                                 metadata["data-requires-python"] = line.split(":", 1)[1].strip()
+                    break  # Stop after the correct METADATA
     except Exception as e:
         if verbose:
             print(f"Failed to inspect {wheel_path.name}: {e}")
