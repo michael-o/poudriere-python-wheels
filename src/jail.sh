@@ -42,6 +42,8 @@ create_multiplatform_wheels() {
   local base_version="$(echo "${version}" | sed -E 's/_p[0-9]+$//')"
   local patch="$(echo "${version}" | sed -nE 's/.+_p([0-9]+)$/\1/p')"
   patch="${patch:-0}"
+  local wheel_redirect="/dev/null"
+  [ "$VERBOSE" -gt 1 ] && wheel_redirect="/dev/stdout"
   local platform_tags="$(awk -v os="${os}" -v base_version="${base_version}" -v patch="${patch}" -v arch="${arch}" -v last_p="${RETAG_LAST_PATCHES_COUNT}" '
   BEGIN {
     start = (patch - last_p + 1 > 0) ? patch - last_p + 1 : 0
@@ -57,13 +59,13 @@ create_multiplatform_wheels() {
   find "${PYTHON_WHEELS:?}" -maxdepth 1 -name "*${platform_tag}.whl" -newer "${PYTHON_WHEELS}/.stamp" | while read -r wheel; do
     [ ${VERBOSE} -gt 1 ] && echo "Retagging new wheel: ${wheel}"
     # It is safe to remove the original wheel because it has not been seen before, thus not been indexed.
-    "${wheel_cmd:?}" tags --remove --platform-tag="${platform_tags}" "${wheel}" > /dev/null
+    "${wheel_cmd:?}" tags --remove --platform-tag="${platform_tags}" "${wheel}" > "${wheel_redirect}"
   done
   find "${PYTHON_WHEELS:?}" -maxdepth 1 \( -name "*${os}_${base_version}_${arch}*.whl" -or \
       -name "*${os}_${base_version}_p*_${arch}*.whl" \) ! -name "*${platform_tag}.whl" ! -newer "${PYTHON_WHEELS}/.stamp" | while read -r wheel; do
     [ ${VERBOSE} -gt 1 ] && echo "Retagging existing wheel: ${wheel}"
     # Existing wheels cannot be removed because they might be referenced in a lock file
-    "${wheel_cmd:?}" tags --platform-tag="${platform_tags}" "${wheel}" > /dev/null
+    "${wheel_cmd:?}" tags --platform-tag="${platform_tags}" "${wheel}" > "${wheel_redirect}"
   done
 }
 
