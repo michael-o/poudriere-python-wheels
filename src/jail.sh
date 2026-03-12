@@ -87,9 +87,15 @@ create_multiplatform_wheels() {
   done
   find "${PYTHON_WHEELS:?}" -maxdepth 1 \( -name "*${os}_${base_version}_${arch}*.whl" -or \
       -name "*${os}_${base_version}_p*_${arch}*.whl" \) ! -name "*${platform_tag}.whl" ! -newer "${PYTHON_WHEELS}/.stamp" | while read -r wheel; do
-    [ ${VERBOSE} -gt 1 ] && echo "Retagging existing wheel: ${wheel}"
-    # Existing wheels cannot be removed because they might be referenced in a lock file
-    "${wheel_cmd:?}" tags --platform-tag="${platform_tags}" "${wheel}" > "${wheel_redirect}"
+    local wheel_base="${wheel%*-*.whl}"
+    local retagged_wheel="${wheel_base}-${platform_tags}.whl"
+    if [ -e "${retagged_wheel}" ]; then
+      [ ${VERBOSE} -gt 1 ] && echo "Skipping already existing retagged wheel: ${retagged_wheel}"
+    else
+      [ ${VERBOSE} -gt 1 ] && echo "Retagging existing wheel: ${wheel}"
+      # Existing wheels cannot be removed because they might be referenced in a lock file
+      "${wheel_cmd:?}" tags --platform-tag="${platform_tags}" "${wheel}" > "${wheel_redirect}"
+    fi
   done
 }
 
