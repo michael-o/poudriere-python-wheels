@@ -8,7 +8,6 @@
 * `poudriere-devel` installed
 * `python` installed if below is desired
 * `py-wheel` (`wheel` command) installed if below is desired
-  for RELEASE versions with patches from p-2 to p (three in total)
 
 ## Installation/Configuration
 
@@ -25,8 +24,8 @@ Run your poudriere build as usual, as soon as a Python package is built it will:
 
 Poudriere will process the wheels by
 * collecting them after successful package build from the port's work directory,
-* adding a [build tag]((https://packaging.python.org/en/latest/specifications/binary-distribution-format/)) to wheels due to rebuilds (if `py-wheel` is installed),
-* adding [multiplatform tags]((https://packaging.python.org/en/latest/specifications/binary-distribution-format/) to wheels for RELEASE versions (if `py-wheel` is installed),
+* adding a [build tag](https://packaging.python.org/en/latest/specifications/binary-distribution-format/) to wheels due to rebuilds (if `py-wheel` is installed),
+* adding [multiplatform tags](https://packaging.python.org/en/latest/specifications/binary-distribution-format/) to wheels for RELEASE versions with patches from p-2 to p (three in total) (if `py-wheel` is installed),
 * generates a static simple index (if `export GENERATE_STATIC_INDEX=yes` is set in your `poudriere.conf`).
 
 Your wheels are ready to be served by a web server.
