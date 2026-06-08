@@ -15,6 +15,11 @@
 * Add `PYDISTUTILS_BUILD_WHEEL=yes` to your `make.conf`, PEP 517-based wheels are built by default
 * Copy the hooks from `src/` to `${POUDRIERED}/hooks/plugins/python-wheels/`
 * Add `NO_PACKAGE_BUILDING=yes ; export PROCESS_PYTHON_WHEELS=yes` to your `poudriere.conf`
+* If you are running ZFS, optionally create the Python wheels dataset:
+
+  ```
+  zfs create -o compression=off ${ZPOOL}${ZROOTFS}/data/python-wheels
+  ```
 
 ## Building/Processing Python Wheels
 
