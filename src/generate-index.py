@@ -42,7 +42,7 @@ def generate_project_index(project_dir: Path, files: list[Path], inspect_metadat
     for f in sorted(files):
         digest = sha256sum(f)
         attrs = ""
-        if inspect_metadata and f.suffix == ".whl":
+        if inspect_metadata:
             meta = extract_metadata(f, verbose)
             for k, v in meta.items():
                 attrs += f' {k}="{html.escape(v)}"'
@@ -71,7 +71,7 @@ def build_index(wheel_dir: Path, inspect_metadata: bool, symlink: bool, verbose:
 
     projects = {}
     for f in wheel_dir.iterdir():
-        if f.suffix in [".whl", ".tar.gz", ".zip"]:
+        if f.suffix == ".whl":
             project_name = normalize_name(f.name.split("-")[0])
             proj_dir = simple_dir / project_name
             proj_dir.mkdir(exist_ok=True)
@@ -101,7 +101,7 @@ def main():
         "wheel_dir",
         type=Path,
         metavar="WHEEL_DIR",
-        help="Directory containing wheels/sdists"
+        help="Directory containing wheels"
     )
     parser.add_argument(
         "--inspect-metadata",
