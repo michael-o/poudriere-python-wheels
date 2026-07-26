@@ -114,14 +114,9 @@ def main():
         help="Enable verbose output"
     )
     parser.add_argument(
-        "-s", "--symlink",
-        action="store_true",
-        help="Use relative symlinks in WHEEL_DIR/simple/ (default)"
-    )
-    parser.add_argument(
         "-S", "--no-symlink",
         action="store_true",
-        help="Copy files into WHEEL_DIR/simple/ instead of symlinking"
+        help="Copy files into WHEEL_DIR/simple/ instead of symlinking (default: use relative symlinks)"
     )
     args = parser.parse_args()
 
