@@ -65,7 +65,7 @@ def generate_root_index(simple_dir: Path, projects: list[str], verbose: int) -> 
     if verbose > 0:
         print(f"Generated {index_path}")
 
-def build_index(wheel_dir: Path, inspect_metadata: bool, symlink: bool, verbose: int) -> None:
+def build_index(wheel_dir: Path, inspect_metadata: bool, symlink: bool, verbose: int, force: bool) -> None:
     if verbose > 0:
         print(f"Generating static index in: {wheel_dir}")
 
@@ -73,13 +73,18 @@ def build_index(wheel_dir: Path, inspect_metadata: bool, symlink: bool, verbose:
     simple_dir.mkdir(exist_ok=True)
 
     projects = {}
+    changed_projects = set()
+    new_project_seen = False
     for f in wheel_dir.iterdir():
         if f.suffix == ".whl":
             project_name = normalize_name(f.name.split("-")[0])
             proj_dir = simple_dir / project_name
-            proj_dir.mkdir(exist_ok=True)
+            if not proj_dir.exists():
+                proj_dir.mkdir()
+                new_project_seen = True
             dest = proj_dir / f.name
             if not dest.exists():
+                changed_projects.add(project_name)
                 if symlink:
                     rel_target = os.path.relpath(f, proj_dir)
                     dest.symlink_to(rel_target)
@@ -91,10 +96,22 @@ def build_index(wheel_dir: Path, inspect_metadata: bool, symlink: bool, verbose:
                         print(f"Copied {f.name} → {dest}")
             projects.setdefault(project_name, []).append(dest)
 
+    # Wheel filenames are immutable once published (build tags and
+    # multiplatform windows only ever add new files), so a project's
+    # index only needs regenerating when a file was actually added to
+    # it this run, or it doesn't have one yet.
     for proj, files in projects.items():
-        generate_project_index(simple_dir / proj, files, inspect_metadata, verbose)
+        proj_dir = simple_dir / proj
+        if force or proj in changed_projects or not (proj_dir / "index.html").exists():
+            generate_project_index(proj_dir, files, inspect_metadata, verbose)
+        elif verbose > 1:
+            print(f"Unchanged, skipping: {proj_dir / 'index.html'}")
 
-    generate_root_index(simple_dir, list(projects.keys()), verbose)
+    root_index = simple_dir / "index.html"
+    if force or new_project_seen or not root_index.exists():
+        generate_root_index(simple_dir, list(projects.keys()), verbose)
+    elif verbose > 1:
+        print(f"Unchanged, skipping: {root_index}")
 
 def main():
     parser = argparse.ArgumentParser(
@@ -122,13 +139,18 @@ def main():
         action="store_true",
         help="Copy files into WHEEL_DIR/simple/ instead of symlinking (default: use relative symlinks)"
     )
+    parser.add_argument(
+        "-f", "--force",
+        action="store_true",
+        help="Regenerate every index, even for projects with no new wheels"
+    )
     args = parser.parse_args()
 
     symlink = True
     if args.no_symlink:
         symlink = False
 
-    build_index(args.wheel_dir, args.inspect_metadata, symlink, args.verbose)
+    build_index(args.wheel_dir, args.inspect_metadata, symlink, args.verbose, args.force)
 
 if __name__ == "__main__":
     main()
