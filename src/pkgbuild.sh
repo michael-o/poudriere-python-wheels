@@ -36,18 +36,52 @@ find_executable() {
 if [ "${event}" = "success" ]; then
   port="$1"
   pkgname="$2"
-  wheel_cmd="$(find_executable wheel)"
+  wheel_cmd="$(find_executable wheel yes)"
   build_tag="$(stat -f %m "${PYTHON_WHEELS:?}/.stamp")"
+  metadata_dir="${PYTHON_WHEELS:?}/.metadata"
   # FIXME Cannot retrieve WRKDIR like poudriere does
   for wrkdir in "${WRKDIRS}/usr/ports/${port}"/work-py*; do
     whldir="${wrkdir}/whl"
     if [ -d "${whldir}" ]; then
       [ ${VERBOSE} -gt 0 ] && echo "Copying Python wheels to: ${PYTHON_WHEELS:?}"
       find "${whldir}" -type f -name "*.whl" | while read -r wheel; do
-        if [ -n "${wheel_cmd}" ]; then
-          [ ${VERBOSE} -gt 1 ] && echo "Retagging new wheel: ${wheel}"
-          wheel="${whldir}"/"$("${wheel_cmd:?}" tags --remove --build="${build_tag}" "${wheel}")"
+        # A patch bump alone (_pN in the platform tag) does not mean
+        # the wheel's content changed, so it is normalized away
+        # before this wheel is ever hashed or compared. Safe to
+        # remove: this wheel was never published or indexed.
+        base="$(basename "${wheel}" .whl)"
+        platform_tag="${base##*-}"
+        base_platform_tag="$(echo "${platform_tag}" | sed -E 's/_p[0-9]+_/_/')"
+        [ ${VERBOSE} -gt 1 ] && echo "Normalizing new wheel: ${wheel}"
+        wheel="${whldir}"/"$("${wheel_cmd:?}" tags --remove \
+            --platform-tag="${base_platform_tag}" "${wheel}")"
+
+        # Compare against the last known content for this group (name,
+        # version, py/abi tag, patch-normalized platform). A rebuild
+        # triggered by e.g. a PORTREVISION bump or an unrelated changed
+        # option/dependency frequently produces byte-identical wheel
+        # content; only install when the content actually changed, so
+        # a new build tag isn't minted for nothing. Only the latest
+        # hash per group is kept: reverting to older content will not
+        # be recognized, which is an accepted, rare tradeoff.
+        #
+        # The metadata file also records the build tag actually used,
+        # so jail.sh can look up the file(s) for this group's current
+        # latest build tag without having to rank every surviving
+        # build-tag variant on disk.
+        group_key="${base%-*}-${base_platform_tag}"
+        hash="$(sha256 -q "${wheel}")"
+        metadata_file="${metadata_dir}/${group_key}"
+        if [ -f "${metadata_file}" ] && \
+            [ "${hash}" = "$(cut -w -f 1 "${metadata_file}")" ]; then
+          [ ${VERBOSE} -gt 1 ] && echo "Discarding new wheel, content unchanged: ${wheel}"
+          continue
         fi
+        echo "${hash} ${build_tag}" > "${metadata_file}"
+
+        [ ${VERBOSE} -gt 1 ] && echo "Retagging new wheel: ${wheel}"
+        wheel="${whldir}"/"$("${wheel_cmd:?}" tags --remove --build="${build_tag}" "${wheel}")"
+
         [ ${VERBOSE} -gt 1 ] && echo "Copying new wheel: ${wheel}"
         # Some wheels are created with Python's TemporaryFile which has
         # mask of 0600. We need to normalize all to 0644.

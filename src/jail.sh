@@ -40,6 +40,7 @@ create_multiplatform_wheels() {
   local arch="$4"
   local platform_tag="${os}_${version}_${arch}"
   local base_version="$(echo "${version}" | sed -E 's/_p[0-9]+$//')"
+  local base_platform_tag="${os}_${base_version}_${arch}"
   local patch="$(echo "${version}" | sed -nE 's/.+_p([0-9]+)$/\1/p')"
   patch="${patch:-0}"
   local wheel_redirect="/dev/null"
@@ -80,27 +81,42 @@ create_multiplatform_wheels() {
   [ ${VERBOSE} -gt 0 ] && echo "Creating multiplatform Python wheels in: ${PYTHON_WHEELS:?}"
   [ ${VERBOSE} -gt 1 ] && echo "Current platform tag: ${platform_tag}"
   [ ${VERBOSE} -gt 1 ] && echo "New multiplatform tags: ${platform_tags}"
-  find "${PYTHON_WHEELS:?}" -maxdepth 1 -name "*${platform_tag}.whl" -newer "${PYTHON_WHEELS}/.stamp" | while read -r wheel; do
-    [ ${VERBOSE} -gt 1 ] && echo "Retagging new wheel: ${wheel}"
-    # It is safe to remove the original wheel because it has not been seen before, thus not been indexed.
-    "${wheel_cmd:?}" tags --remove --platform-tag="${platform_tags}" "${wheel}" > "${wheel_redirect}"
-  done
-  find "${PYTHON_WHEELS:?}" -maxdepth 1 \( -name "*${os}_${base_version}_${arch}*.whl" -or \
-      -name "*${os}_${base_version}_p*_${arch}*.whl" \) ! -name "*${platform_tag}.whl" ! -newer "${PYTHON_WHEELS}/.stamp" | while read -r wheel; do
-    local wheel_base="${wheel%*-*.whl}"
-    local retagged_wheel="${wheel_base}-${platform_tags}.whl"
-    if [ -e "${retagged_wheel}" ]; then
-      [ ${VERBOSE} -gt 1 ] && echo "Skipping already existing retagged wheel: ${retagged_wheel}"
-    else
-      [ ${VERBOSE} -gt 1 ] && echo "Retagging existing wheel: ${wheel}"
-      # Existing wheels cannot be removed because they might be referenced in a lock file
-      "${wheel_cmd:?}" tags --platform-tag="${platform_tags}" "${wheel}" > "${wheel_redirect}"
-    fi
+  # pkgbuild.sh records the build tag it stamped for each group's
+  # current latest content in PYTHON_WHEELS/.metadata/<group_key>. Only
+  # files matching that build tag are candidates for a new window:
+  # older build tags are frozen at whatever window they already had and
+  # must not be touched again, since they may be referenced in a lock
+  # file. A single build tag can still have more than one file on disk
+  # (each earlier patch bump's window extension is itself kept, for the
+  # same reason), so this looks up all of them, not just one.
+  find "${PYTHON_WHEELS:?}/.metadata" -maxdepth 1 -type f \
+      -name "*-${base_platform_tag}" | while read -r metadata_file; do
+    local group_key="$(basename "${metadata_file}")"
+    local build_tag="$(cut -w -f 2 "${metadata_file}")"
+    local prefix="${group_key%-${base_platform_tag}}"
+    local name_version="$(echo "${prefix}" | cut -d'-' -f1,2)"
+    local pytag_abitag="$(echo "${prefix}" | cut -d'-' -f3-)"
+    find "${PYTHON_WHEELS:?}" -maxdepth 1 \
+        -name "${name_version}-${build_tag}-${pytag_abitag}-*.whl" | while read -r wheel; do
+      local wheel_base="${wheel%*-*.whl}"
+      local retagged_wheel="${wheel_base}-${platform_tags}.whl"
+      if [ -e "${retagged_wheel}" ]; then
+        [ ${VERBOSE} -gt 1 ] && echo "Skipping already existing retagged wheel: ${retagged_wheel}"
+      elif [ "${wheel}" -nt "${PYTHON_WHEELS}/.stamp" ]; then
+        [ ${VERBOSE} -gt 1 ] && echo "Retagging new wheel: ${wheel}"
+        # It is safe to remove the original wheel because it has not been seen before, thus not been indexed.
+        "${wheel_cmd:?}" tags --remove --platform-tag="${platform_tags}" "${wheel}" > "${wheel_redirect}"
+      else
+        [ ${VERBOSE} -gt 1 ] && echo "Retagging existing wheel: ${wheel}"
+        # Existing wheels cannot be removed because they might be referenced in a lock file
+        "${wheel_cmd:?}" tags --platform-tag="${platform_tags}" "${wheel}" > "${wheel_redirect}"
+      fi
+    done
   done
 }
 
 if [ "${event}" = "start" ]; then
-  mkdir -p "${PYTHON_WHEELS:?}/"
+  mkdir -p "${PYTHON_WHEELS:?}/.metadata"
   touch "${PYTHON_WHEELS}/.stamp"
 fi
 
@@ -108,12 +124,10 @@ if [ "${event}" = "stop" ]; then
   os="$(uname -s)"
   version="$(cat "${POUDRIERED:?}"/jails/"${JAILNAME:?}"/version)"
   arch="$(cat "${POUDRIERED:?}"/jails/"${JAILNAME:?}"/arch)"
+  wheel_cmd="$(find_executable wheel yes)"
   case "${version}" in
     *-RELEASE-p*)
-      wheel_cmd="$(find_executable wheel)"
-      if [ -n "${wheel_cmd}" ]; then
-        create_multiplatform_wheels "${wheel_cmd}" "${os}" "${version}" "${arch}"
-      fi
+      create_multiplatform_wheels "${wheel_cmd}" "${os}" "${version}" "${arch}"
       ;;
     *)
       # No retagging required
