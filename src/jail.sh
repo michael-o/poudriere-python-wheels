@@ -136,8 +136,9 @@ if [ "${event}" = "stop" ]; then
 
   case "${GENERATE_STATIC_INDEX}" in
     yes)
-      [ ${VERBOSE} -gt 0 ] && echo "Generating static index in: ${PYTHON_WHEELS:?}"
-      [ ${VERBOSE} -gt 0 ] && vflag="-v" || vflag=""
+      vflag=""
+      [ ${VERBOSE} -gt 0 ] && vflag="-v"
+      [ ${VERBOSE} -gt 1 ] && vflag="-vv"
       "${HOOKS}/generate-index.py" $vflag --inspect-metadata "${PYTHON_WHEELS:?}"
       ;;
     *)

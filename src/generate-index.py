@@ -17,14 +17,14 @@ def sha256sum(path: Path) -> str:
             h.update(chunk)
     return h.hexdigest()
 
-def extract_metadata(wheel_path: Path, verbose: bool) -> dict:
+def extract_metadata(wheel_path: Path, verbose: int) -> dict:
     metadata = {}
     try:
         with zipfile.ZipFile(wheel_path, "r") as zf:
             for name in zf.namelist():
                 # Only accept top-level dist-info METADATA
                 if name.count("/") == 1 and name.endswith(".dist-info/METADATA"):
-                    if verbose:
+                    if verbose > 1:
                         print(f"Inspecting metadata in {wheel_path.name}")
                     with zf.open(name) as meta_file:
                         for line in meta_file:
@@ -33,11 +33,11 @@ def extract_metadata(wheel_path: Path, verbose: bool) -> dict:
                                 metadata["data-requires-python"] = line.split(":", 1)[1].strip()
                     break  # Stop after the correct METADATA
     except Exception as e:
-        if verbose:
+        if verbose > 1:
             print(f"Failed to inspect {wheel_path.name}: {e}")
     return metadata
 
-def generate_project_index(project_dir: Path, files: list[Path], inspect_metadata: bool, verbose: bool) -> None:
+def generate_project_index(project_dir: Path, files: list[Path], inspect_metadata: bool, verbose: int) -> None:
     lines = ["<html><body>"]
     for f in sorted(files):
         digest = sha256sum(f)
@@ -52,20 +52,23 @@ def generate_project_index(project_dir: Path, files: list[Path], inspect_metadat
     lines.append("</body></html>")
     index_path = project_dir / "index.html"
     index_path.write_text("\n".join(lines), encoding="utf-8")
-    if verbose:
+    if verbose > 1:
         print(f"Generated {index_path}")
 
-def generate_root_index(simple_dir: Path, projects: list[str], verbose: bool) -> None:
+def generate_root_index(simple_dir: Path, projects: list[str], verbose: int) -> None:
     lines = ["<html><body>"]
     for p in sorted(projects):
         lines.append(f'<a href="{p}/">{p}</a><br>')
     lines.append("</body></html>")
     index_path = simple_dir / "index.html"
     index_path.write_text("\n".join(lines), encoding="utf-8")
-    if verbose:
+    if verbose > 0:
         print(f"Generated {index_path}")
 
-def build_index(wheel_dir: Path, inspect_metadata: bool, symlink: bool, verbose: bool) -> None:
+def build_index(wheel_dir: Path, inspect_metadata: bool, symlink: bool, verbose: int) -> None:
+    if verbose > 0:
+        print(f"Generating static index in: {wheel_dir}")
+
     simple_dir = wheel_dir / "simple"
     simple_dir.mkdir(exist_ok=True)
 
@@ -80,11 +83,11 @@ def build_index(wheel_dir: Path, inspect_metadata: bool, symlink: bool, verbose:
                 if symlink:
                     rel_target = os.path.relpath(f, proj_dir)
                     dest.symlink_to(rel_target)
-                    if verbose:
+                    if verbose > 1:
                         print(f"Symlinked {dest} → {rel_target}")
                 else:
                     dest.write_bytes(f.read_bytes())
-                    if verbose:
+                    if verbose > 1:
                         print(f"Copied {f.name} → {dest}")
             projects.setdefault(project_name, []).append(dest)
 
@@ -110,8 +113,9 @@ def main():
     )
     parser.add_argument(
         "-v", "--verbose",
-        action="store_true",
-        help="Enable verbose output"
+        action="count",
+        default=0,
+        help="Enable verbose output; repeat (-vv) for per-file output"
     )
     parser.add_argument(
         "-S", "--no-symlink",
