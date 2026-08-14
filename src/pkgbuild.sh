@@ -58,7 +58,8 @@ if [ "${event}" = "success" ]; then
   build_tag="$(stat -f %m "${PYTHON_WHEELS:?}/.stamp")"
   metadata_dir="${PYTHON_WHEELS:?}/.metadata"
   # FIXME Cannot retrieve WRKDIR like poudriere does
-  for wrkdir in "${WRKDIRS}/usr/ports/${port}"/work-py*; do
+  for wrkdir in "${WRKDIRS}/usr/ports/${port}"/work-py* \
+      "${WRKDIRS}/overlays"/*/"${port}"/work-py*; do
     whldir="${wrkdir}/whl"
     if [ -d "${whldir}" ]; then
       [ ${VERBOSE} -gt 0 ] && echo "Copying Python wheels to: ${PYTHON_WHEELS:?}"
