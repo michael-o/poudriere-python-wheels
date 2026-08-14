@@ -25,7 +25,7 @@
 
 Run your poudriere build as usual, as soon as a Python package is built it will:
 * in case of distutils build the wheel,
-* in case of PEP 517 the wheel is already built.
+* in case of PEP 517 the wheel is already built, since `PEP517_BUILD_CMD` runs automatically as part of the port's normal build phase (no opt-in required, unlike `PYDISTUTILS_BUILD_WHEEL` for distutils).
 
 Poudriere will process the wheels by
 * collecting them after successful package build from the port's work directory,
