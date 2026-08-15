@@ -11,7 +11,7 @@
 
 ## Installation/Configuration
 
-* Apply [this patch](https://github.com/freebsd/freebsd-ports/compare/main...michael-o:freebsd-ports:build-python-wheels.patch) to your ports tree
+* Apply [this patch](https://github.com/freebsd/freebsd-ports/compare/main...michael-o:freebsd-ports:python-wheels.patch) to your ports tree
 * Add `PYDISTUTILS_BUILD_WHEEL=yes` to your `make.conf`, PEP 517-based wheels are built by default
 * Copy the hooks from `src/` to `${POUDRIERED}/hooks/plugins/python-wheels/`
 * Add `NO_PACKAGE_BUILDING=yes ; export PROCESS_PYTHON_WHEELS=yes` to your `poudriere.conf`
