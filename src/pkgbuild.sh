@@ -66,13 +66,26 @@ if [ "${event}" = "success" ]; then
         # A patch bump alone (_pN in the platform tag) does not mean
         # the wheel's content changed, so it is normalized away
         # before this wheel is ever hashed or compared. Safe to
-        # remove: this wheel was never published or indexed.
+        # replace file-by-file: this wheel was never published or
+        # indexed. Skip the subprocess (and the WHEEL/RECORD
+        # consistency check it does even on a no-op) entirely when
+        # there is no _pN to strip. Mirrors jail.sh's *-RELEASE-p*
+        # check, normalized the same way the platform tag itself is
+        # (lowercase, hyphens to underscores).
         base="$(basename "${wheel}" .whl)"
         platform_tag="${base##*-}"
-        base_platform_tag="$(echo "${platform_tag}" | sed -E 's/_p[0-9]+_/_/')"
-        [ ${VERBOSE} -gt 1 ] && echo "Normalizing new wheel: ${wheel}"
-        wheel="${whldir}"/"$("${wheel_cmd:?}" tags --remove \
-            --platform-tag="${base_platform_tag}" "${wheel}")"
+        base_platform_tag="${platform_tag}"
+        case "${platform_tag}" in
+        *_release_p*_*)
+          base_platform_tag="$(echo "${platform_tag}" | sed -E 's/_p[0-9]+_/_/')"
+          [ ${VERBOSE} -gt 1 ] && echo "Normalizing new wheel: ${wheel}"
+          wheel="${whldir}"/"$("${wheel_cmd:?}" tags --remove \
+              --platform-tag="${base_platform_tag}" "${wheel}")"
+          ;;
+        *)
+          # No normalization required
+          ;;
+        esac
 
         # Compare against the last known content for this group (name,
         # version, py/abi tag, patch-normalized platform). A rebuild
