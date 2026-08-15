@@ -15,7 +15,8 @@
 * Add `PYDISTUTILS_BUILD_WHEEL=yes` to your `make.conf`, PEP 517-based wheels are built by default
 * Copy the hooks from `src/` to `${POUDRIERED}/hooks/plugins/python-wheels/`
 * Add `NO_PACKAGE_BUILDING=yes ; export PROCESS_PYTHON_WHEELS=yes` to your `poudriere.conf`
-* Ff you want a static simple index being generated, add `export GENERATE_STATIC_INDEX=yes` to your `poudriere.conf`
+* Add `PACKAGE_FETCH_BLACKLIST="py${PYTHON_SUFFIX}-*"` to your `poudriere.conf` to avoid just dowloading packages
+* If you want a static simple index being generated, add `export GENERATE_STATIC_INDEX=yes` to your `poudriere.conf`
 * If you are running ZFS, optionally create the Python wheels dataset:
 
   ```
