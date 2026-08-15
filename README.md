@@ -6,7 +6,7 @@
 ## Requirements
 
 * `poudriere-devel` installed
-* `python` installed
+* `python3` installed
 * `py-wheel` (`wheel` command) installed; required to normalize and deduplicate wheels, see below
 
 ## Installation/Configuration
