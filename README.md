@@ -19,6 +19,9 @@
   add at least `PACKAGE_FETCH_BLACKLIST="py<PYTHON_SUFFIX>-*"` or explicit non-prefixed package names
   (not all packages are prefixed) to your `poudriere.conf`, since fetching a prebuilt package instead
   of building locally skips the wheel-collection hook entirely
+* By default only ports listed explicitly on the build command line/list file are collected, not
+  automatic (transitive) dependencies; add `export PYTHON_WHEELS_SCOPE=all` to your `poudriere.conf`
+  to collect wheels for every built port instead
 * If you want a static simple index being generated, add `export GENERATE_STATIC_INDEX=yes` to your `poudriere.conf`
 * If you are running ZFS, optionally create the Python wheels dataset:
 

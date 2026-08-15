@@ -37,22 +37,30 @@ if [ "${event}" = "success" ]; then
   port="$1"
   pkgname="$2"
 
-  # Only process ports the user explicitly listed for this build, not
-  # automatic ports pulled in only as a dependency of one of them
-  # (same distinction as pkg's own "automatic" flag, pkg query %a).
-  # all_pkgs is poudriere's build-time record of this: one line per
-  # queued package, with the third field "listed" for anything named
-  # directly on the command line/list file and something else (e.g.
-  # "run", "build") for an automatic dependency. Not exposed to hooks
-  # any other way; MASTERMNT is already the /ref mount, so this is the
-  # same file poudriere itself reads via pkgname_is_listed().
-  all_pkgs="${MASTERMNT:?}/.p/all_pkgs"
-  if [ -f "${all_pkgs}" ] && ! awk -v pkgname="${pkgname}" \
-      '$1 == pkgname && $3 == "listed" { found=1; exit } END { exit !found }' \
-      "${all_pkgs}"; then
-    [ ${VERBOSE} -gt 1 ] && echo "Skipping automatic port: ${port}"
-    exit 0
-  fi
+  : "${PYTHON_WHEELS_SCOPE:=listed}"
+  case "${PYTHON_WHEELS_SCOPE}" in
+  all)
+    # Process every built port, including automatic dependencies
+    ;;
+  *)
+    # Only process ports the user explicitly listed for this build, not
+    # automatic ports pulled in only as a dependency of one of them
+    # (same distinction as pkg's own "automatic" flag, pkg query %a).
+    # all_pkgs is poudriere's build-time record of this: one line per
+    # queued package, with the third field "listed" for anything named
+    # directly on the command line/list file and something else (e.g.
+    # "run", "build") for an automatic dependency. Not exposed to hooks
+    # any other way; MASTERMNT is already the /ref mount, so this is the
+    # same file poudriere itself reads via pkgname_is_listed().
+    all_pkgs="${MASTERMNT:?}/.p/all_pkgs"
+    if [ -f "${all_pkgs}" ] && ! awk -v pkgname="${pkgname}" \
+        '$1 == pkgname && $3 == "listed" { found=1; exit } END { exit !found }' \
+        "${all_pkgs}"; then
+      [ ${VERBOSE} -gt 1 ] && echo "Skipping automatic port: ${port}"
+      exit 0
+    fi
+    ;;
+  esac
 
   wheel_cmd="$(find_executable wheel yes)"
   build_tag="$(stat -f %m "${PYTHON_WHEELS:?}/.stamp")"
