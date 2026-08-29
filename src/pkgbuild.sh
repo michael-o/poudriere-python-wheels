@@ -65,13 +65,16 @@ if [ "${event}" = "success" ]; then
   wheel_cmd="$(find_executable wheel yes)"
   build_tag="$(stat -f %m "${PYTHON_WHEELS:?}/.stamp")"
   metadata_dir="${PYTHON_WHEELS:?}/.metadata"
-  # FIXME Cannot retrieve WRKDIR like poudriere does
+  # PEP517_INSTALL_CMD reads wheels from ${BUILD_WRKSRC}/dist, and
+  # BUILD_WRKSRC is port-specific (defaults to WRKSRC, but ports override it
+  # to point deeper into the extracted source). There is no cheap way to ask
+  # make(1) for the exact path from here, so search for any dist/ directory
+  # instead of assuming a fixed depth.
   for wrkdir in "${WRKDIRS}/usr/ports/${port}"/work* \
       "${WRKDIRS}/overlays"/*/"${port}"/work*; do
-    whldir="${wrkdir}/whl"
-    if [ -d "${whldir}" ]; then
+    find "${wrkdir}" -type d -name dist 2>/dev/null | while read -r distdir; do
       [ ${VERBOSE} -gt 0 ] && echo "Copying Python wheels to: ${PYTHON_WHEELS:?}"
-      find "${whldir}" -type f -name "*.whl" | while read -r wheel; do
+      find "${distdir}" -maxdepth 1 -type f -name "*.whl" | while read -r wheel; do
         # A patch bump alone (_pN in the platform tag) does not mean
         # the wheel's content changed, so it is normalized away
         # before this wheel is ever hashed or compared. Safe to
@@ -88,7 +91,7 @@ if [ "${event}" = "success" ]; then
         *_release_p*_*)
           base_platform_tag="$(echo "${platform_tag}" | sed -E 's/_p[0-9]+_/_/')"
           [ ${VERBOSE} -gt 1 ] && echo "Normalizing new wheel: ${wheel}"
-          wheel="${whldir}"/"$("${wheel_cmd:?}" tags --remove \
+          wheel="${distdir}"/"$("${wheel_cmd:?}" tags --remove \
               --platform-tag="${base_platform_tag}" "${wheel}")"
           ;;
         *)
@@ -120,14 +123,14 @@ if [ "${event}" = "success" ]; then
         echo "${hash} ${build_tag}" > "${metadata_file}"
 
         [ ${VERBOSE} -gt 1 ] && echo "Retagging new wheel: ${wheel}"
-        wheel="${whldir}"/"$("${wheel_cmd:?}" tags --remove --build="${build_tag}" "${wheel}")"
+        wheel="${distdir}"/"$("${wheel_cmd:?}" tags --remove --build="${build_tag}" "${wheel}")"
 
         [ ${VERBOSE} -gt 1 ] && echo "Copying new wheel: ${wheel}"
         # Some wheels are created with Python's TemporaryFile which has
         # mask of 0600. We need to normalize all to 0644.
         install -m 0644 "${wheel}" "${PYTHON_WHEELS}"
       done
-    fi
+    done
   done
 fi
 
