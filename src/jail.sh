@@ -126,7 +126,7 @@ if [ "${event}" = "stop" ]; then
   arch="$(cat "${POUDRIERED:?}"/jails/"${JAILNAME:?}"/arch)"
   case "${version}" in
     *-RELEASE-p*)
-      wheel_cmd="$(find_executable wheel yes)"
+      wheel_cmd="$(find_executable wheel yes)" || exit 1
       create_multiplatform_wheels "${wheel_cmd}" "${os}" "${version}" "${arch}"
       ;;
     *)
@@ -139,7 +139,7 @@ if [ "${event}" = "stop" ]; then
       vflag=""
       [ ${VERBOSE} -gt 0 ] && vflag="-v"
       [ ${VERBOSE} -gt 1 ] && vflag="-vv"
-      python3_cmd="$(find_executable python3 yes)"
+      python3_cmd="$(find_executable python3 yes)" || exit 1
       "${python3_cmd}" "${HOOKS}/generate-index.py" $vflag --inspect-metadata "${PYTHON_WHEELS:?}"
       ;;
     *)

@@ -62,7 +62,7 @@ if [ "${event}" = "success" ]; then
     ;;
   esac
 
-  wheel_cmd="$(find_executable wheel yes)"
+  wheel_cmd="$(find_executable wheel yes)" || exit 1
   build_tag="$(stat -f %m "${PYTHON_WHEELS:?}/.stamp")"
   metadata_dir="${PYTHON_WHEELS:?}/.metadata"
   # PEP517_INSTALL_CMD reads wheels from ${BUILD_WRKSRC}/dist, and
@@ -91,8 +91,13 @@ if [ "${event}" = "success" ]; then
         *_release_p*_*)
           base_platform_tag="$(echo "${platform_tag}" | sed -E 's/_p[0-9]+_/_/')"
           [ ${VERBOSE} -gt 1 ] && echo "Normalizing new wheel: ${wheel}"
-          wheel="${distdir}"/"$("${wheel_cmd:?}" tags --remove \
+          retagged_wheel="$("${wheel_cmd:?}" tags --remove \
               --platform-tag="${base_platform_tag}" "${wheel}")"
+          if [ $? -ne 0 ] || [ -z "${retagged_wheel}" ]; then
+            echo "Error: failed to normalize wheel: ${wheel}" >&2
+            continue
+          fi
+          wheel="${distdir}/${retagged_wheel}"
           ;;
         *)
           # No normalization required
@@ -123,7 +128,12 @@ if [ "${event}" = "success" ]; then
         echo "${hash} ${build_tag}" > "${metadata_file}"
 
         [ ${VERBOSE} -gt 1 ] && echo "Retagging new wheel: ${wheel}"
-        wheel="${distdir}"/"$("${wheel_cmd:?}" tags --remove --build="${build_tag}" "${wheel}")"
+        retagged_wheel="$("${wheel_cmd:?}" tags --remove --build="${build_tag}" "${wheel}")"
+        if [ $? -ne 0 ] || [ -z "${retagged_wheel}" ]; then
+          echo "Error: failed to retag wheel: ${wheel}" >&2
+          continue
+        fi
+        wheel="${distdir}/${retagged_wheel}"
 
         [ ${VERBOSE} -gt 1 ] && echo "Copying new wheel: ${wheel}"
         # Some wheels are created with Python's TemporaryFile which has
